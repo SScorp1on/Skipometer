@@ -1,7 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import './ControlPanel.css';
-import numberToTime from '../../misc/numberToTime';
-import timeToNumber from '../../misc/timeToNumber';
+import {numberToTime} from '../../misc/numberToTime';
+import {timeToNumber} from '../../misc/timeToNumber';
 import {
     Checkbox,
     Group,
@@ -82,8 +82,8 @@ const  ControlPanel = () => {
 
                 }));
             }
-            return () => ws.current?.close();
-    } , []);
+            return () => ws.current.close();
+    } , [ws]);
 
  const updateSkipometer = (calback: any) => {
     calback(skipometer);
@@ -127,7 +127,7 @@ const  ControlPanel = () => {
         <form className="control-panel__form">
             <Stack>
             <TextInput
-                label={'Название'}
+                label={'Заголовок'}
               id="caption"
               defaultValue={skipometer.caption}
                 onChange={(e) => {

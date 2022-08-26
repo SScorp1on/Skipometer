@@ -1,8 +1,8 @@
 const timeToNumber = timeString => {
   const numbers = timeString.split(':');
-  let hours = 0;
-  let minutes = 0;
-  let seconds = 0;
+  let hours;
+  let minutes;
+  let seconds;
 
   hours = numbers[0];
   minutes = numbers[1];

@@ -1,13 +1,14 @@
 import React, {useEffect, useRef, useState} from 'react';
 import './Skipometer.css';
-import numberToTime from '../../misc/numberToTime';
-import states from '../../misc/states';
+import {numberToTime} from '../../misc/numberToTime';
+import {states} from '../../misc/states';
 import {Progress, Text, Box, Stack} from "@mantine/core";
 const webSocket = new WebSocket('ws://localhost:5000');
 
 const Skipometer = () => {
 
-  const [skipometer, setSkipometer] = useState({ caption: '',
+  const [skipometer, setSkipometer] = useState({
+      caption: '',
       enableTimer: false,
       skipNumber: 0,
       currentSkipNumber: 0,
