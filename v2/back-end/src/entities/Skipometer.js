@@ -12,7 +12,7 @@ class Skipometer {
     initialTimeLeft = '01:00:00',
     startVotingTime = '00:30:00',
     skipNumber = 10,
-    allowRevote = true,
+    allowRevote = false,
     saveValue = 1
   ) {
     this.caption = caption;
@@ -135,9 +135,7 @@ class Skipometer {
   }
 
   processDataFromControlPanel(message) {
-    const state = JSON.parse(message);
-    console.log(state);
-    const skipometer = state;
+    const skipometer = JSON.parse(message);
     console.log(skipometer);
     this.caption = skipometer.caption;
     this.initialTimeLeft = skipometer.initialTimeLeft;

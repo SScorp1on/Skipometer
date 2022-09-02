@@ -6,7 +6,6 @@ import {Progress, Text, Box, Stack} from "@mantine/core";
 const webSocket = new WebSocket('ws://localhost:5000');
 
 const Skipometer = () => {
-
   const [skipometer, setSkipometer] = useState({
       caption: '',
       enableTimer: false,
@@ -20,8 +19,9 @@ const Skipometer = () => {
   useEffect(() => {
       ws.current.onmessage = event => {
       setSkipometer(JSON.parse(event.data));
+      console.log(JSON.parse(event.data))
     };
-      return () => ws.current?.close();
+      return () => ws.current.close();
   }, []);
 
     return (
@@ -44,14 +44,13 @@ const Skipometer = () => {
           }
         >
           <Progress
-            className="skipometer__progress-bar__progress"
             radius={'xl'}
+            className="skipometer__progress-bar__progress"
             value={skipometer.currentSkipNumber? skipometer.currentSkipNumber * 100 / skipometer.skipNumber: 0}
             color={skipometer.state === states.SKIPPED ? 'red' : 'green'}
           />
           {skipometer.currentSkipNumber}/{skipometer.skipNumber}
         </div>
-          {/*<Progress style={{width: '250px'}} size={'xs'} radius="xl" value={100 * this.state.skipometer.timeLeft / 3600000}/>*/}
 
         <Text
           className={

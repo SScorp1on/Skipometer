@@ -12,23 +12,35 @@ import {
     Title,
     Button,
     SimpleGrid,
-    Slider,
     Badge,
-    Input, Indicator, RingProgress, Text, Timeline, TimelineItem
+    Input, RingProgress, Text, SegmentedControl,
+    Paper, ThemeIcon, Progress, createStyles, Switch
 } from "@mantine/core";
-import {PlayerPause, PlayerPlay, Refresh} from "tabler-icons-react";
+import {CalendarTime, Clock, PlayerPause, PlayerPlay, Refresh} from "tabler-icons-react";
 
-/*const DeltaTimeWrap = `
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  & input {
-    width: 110px;
-  }
-`;*/
 enum states {
     STOP, RUNNING, PAUSE, TIMEOUT, SKIPPED
 }
+const ICON_SIZE = 60;
+const useStyles = createStyles((theme) => ({
+    card: {
+        position: 'relative',
+        overflow: 'visible',
+        padding: theme.spacing.xl,
+        paddingTop: theme.spacing.xl * 1.5 + ICON_SIZE / 3,
+    },
+
+    icon: {
+        position: 'absolute',
+        top: -ICON_SIZE / 3,
+        left: `calc(50% - ${ICON_SIZE / 2}px)`,
+    },
+
+    title: {
+        fontFamily: `Greycliff CF, ${theme.fontFamily}`,
+        lineHeight: 1,
+    },
+}));
 const webSocket = new WebSocket('ws://localhost:5000');
 const  ControlPanel = () => {
   const [skipometer, setSkipometer] = useState({
@@ -45,7 +57,7 @@ const  ControlPanel = () => {
       voting: false,
       votes: [{
           nickname: '',
-          skip: ''
+          skip: false
       }],
       startTime: null,
       timeLeft: 0,
@@ -53,11 +65,13 @@ const  ControlPanel = () => {
       timer: null,
   });
     const ws = useRef(webSocket);
+    const { classes } = useStyles();
 
     useEffect(() => {
             ws.current.onopen = () => {
                 console.log('connected');
             }
+
             ws.current.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 setSkipometer((prevState) =>
@@ -84,7 +98,6 @@ const  ControlPanel = () => {
             }
             return () => ws.current.close();
     } , [ws]);
-
  const updateSkipometer = (calback: any) => {
     calback(skipometer);
     setSkipometer({ ...skipometer });
@@ -93,12 +106,16 @@ const  ControlPanel = () => {
      setSkipometer({ ...skipometer, enableTimer: value });
   }
 
-  const changeTime = (deltaTime: any) => {
+  const changeTime = (deltaTime: number) => {
     const newTime = timeToNumber(skipometer.initialTimeLeft) + deltaTime;
 
     if (newTime >= 0) {
+        console.log(skipometer.startVotingTime)
+        console.log(skipometer)
       skipometer.initialTimeLeft = numberToTime(newTime);
+
       setSkipometer({ ...skipometer });
+
       sendStateToWSS();
     }
   }
@@ -122,6 +139,30 @@ const  ControlPanel = () => {
                       {numberToTime(skipometer.timeLeft)}
                   </Text>} sections={[{value: 100* skipometer.timeLeft / 3600000 ,
                   color: skipometer.state === states.RUNNING ? 'green' : skipometer.state === states.PAUSE ? 'yellow' : 'red'}]} />
+              {/*<Paper radius="md" withBorder className={classes.card} mt={ICON_SIZE / 3}>
+                  <ThemeIcon className={classes.icon} size={ICON_SIZE} radius={ICON_SIZE}>
+                      <Clock size={34} />
+                  </ThemeIcon>
+
+                  <Text align="center" weight={700} className={classes.title}>
+                      {skipometer.caption}
+                  </Text>
+
+
+                  <Group position="center" mt="xs">
+                      <Text size="sm" color="dimmed">
+                          {numberToTime(skipometer.timeLeft)} {(skipometer.votes.filter((el) => el.skip).length)}
+                          {(skipometer.votes.filter((el) => !el.skip).length)}
+                      </Text>
+                  </Group>
+                  <Progress value={100 * skipometer.timeLeft / 3600000}
+                            color={skipometer.state === states.RUNNING ? 'green' : skipometer.state === states.PAUSE ? 'yellow' : 'red'}  mt={5} />
+                  <Progress sections={[{value: (skipometer.votes.filter((el) => el.skip).length) ,
+                      color: 'red'}, {value: (skipometer.votes.filter((el) => !el.skip).length), color: 'green'}]} mt={5} />
+                  <Group position="center" mt="md">
+                      <Text size="sm">{skipometer.currentSkipNumber}/{skipometer.skipNumber}</Text>
+                  </Group>
+              </Paper>*/}
           </div>
         <Title className="control-panel__header">Панель управления</Title>
         <form className="control-panel__form">
@@ -141,7 +182,6 @@ const  ControlPanel = () => {
               onChange={(event) =>{
                   updateEnableTimer(event.target.checked)
                   ws.current.send(JSON.stringify({...skipometer, enableTimer: event.target.checked}));
-
              }
               }
               disabled={
@@ -154,64 +194,88 @@ const  ControlPanel = () => {
               id="initialTimeLeft"
               type="time"
               step="2"
-              defaultValue={skipometer.initialTimeLeft}
+              value={skipometer.initialTimeLeft}
+              onChange={(event: any) => {
+                  skipometer.initialTimeLeft = event.target.value;
+                  setSkipometer({...skipometer});
+                  sendStateToWSS();
+              }
+              }
               disabled={
                 skipometer.state === states.RUNNING ||
-                skipometer.state === states.PAUSE ||
                 !skipometer.enableTimer
               }
             />
                 </Input.Wrapper>
             <SimpleGrid cols={3} >
               <Button
-               // caption="+1 min"
                 onClick={() => {
                   changeTime(60 * 1000);
                 }}
+                disabled={ skipometer.state === states.RUNNING}
               >+1 мин</Button>
               <Button
-               // caption="+10 min"
                 onClick={() => {
                   changeTime(600 * 1000);
                 }}
+                disabled={ skipometer.state === states.RUNNING}
               >+10 мин</Button>
               <Button
-                  // "+1 hour"
                 onClick={() => {
                  changeTime(60 * 60 * 1000);
                 }}
+                disabled={ skipometer.state === states.RUNNING}
               >+1 час</Button>
               <Button
-               // caption="-1 min"
                 onClick={() => {
                   changeTime(-60 * 1000);
                 }}
+                disabled={ skipometer.state === states.RUNNING}
               >-1 мин</Button>
               <Button
-               // caption="-10 min"
                 onClick={() => {
                   changeTime(-600 * 1000);
                 }}
+                disabled={ skipometer.state === states.RUNNING}
               >-10 мин</Button>
               <Button
-                // caption="-1 hour"
                 onClick={() => {
                   changeTime(-60 * 60 * 1000);
                 }}
+                disabled={ skipometer.state === states.RUNNING}
               >-1 час</Button>
             </SimpleGrid>
-
+                <Input.Wrapper label={'Тир саба'}>
+                <SegmentedControl fullWidth
+                                  disabled={ skipometer.state === states.RUNNING}
+                    data={[
+                        { value: '00:30:00', label: 'Саб' },
+                        { value: '00:15:00', label: 'Мега саб' },
+                        { value: '00:00:00', label: 'ГИГА саб' },
+                    ]}
+                    onChange={(value) => {
+                        skipometer.startVotingTime = value;
+                        setSkipometer({...skipometer})
+                        sendStateToWSS();
+                    }}
+                />
+                </Input.Wrapper>
             <Input.Wrapper label={'Начало голосования'}>
             <Input
               id="startVotingTime"
               type="time"
               step="2"
-              defaultValue={skipometer.startVotingTime}
+              value={skipometer.startVotingTime}
               disabled={
                 skipometer.state === states.RUNNING ||
                 skipometer.state === states.PAUSE ||
                 !skipometer.enableTimer
               }
+              onChange={(event : any) => {
+                  skipometer.startVotingTime = event.target.value;
+                  setSkipometer({...skipometer});
+                  sendStateToWSS();
+              }}
             />
             </Input.Wrapper>
             <NumberInput
@@ -227,26 +291,12 @@ const  ControlPanel = () => {
             <Checkbox
               id="allowRevote"
               label={'Возможность переголосовать'}
-              defaultChecked={skipometer.allowRevote}
-              onInput={() => {
-                sendStateToWSS();
+              checked={skipometer.allowRevote}
+              onChange={(value) => {
+                  setSkipometer({...skipometer, allowRevote: value.currentTarget.checked})
+                  ws.current.send(JSON.stringify({...skipometer, allowRevote: value.currentTarget.checked}));
               }}
             />
-          {/*  <Slider
-                label={`Save value: ${skipometer.saveValue}`}
-              id="saveValue"
-              min={0}
-              max={1}
-              step={0.5}
-                value={skipometer.saveValue}
-              disabled={
-                skipometer.state === states.RUNNING ||
-                skipometer.state === states.PAUSE
-              }
-              onChange={(value) => {
-                setSkipometer({ ...skipometer, saveValue: value });
-              }}
-            />*/}
                 <Group position={'apart'}>
             <Button
                 leftIcon={<PlayerPlay size={20}/>}
