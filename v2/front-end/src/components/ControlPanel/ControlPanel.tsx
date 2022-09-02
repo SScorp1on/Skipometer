@@ -282,6 +282,7 @@ const  ControlPanel = () => {
                 label={'Количество скипов'}
               id="skipNumber"
               min={1}
+                disabled={skipometer.state === states.RUNNING}
               value={skipometer.skipNumber}
               defaultValue={skipometer.skipNumber}
                 onChange={(value) => {
