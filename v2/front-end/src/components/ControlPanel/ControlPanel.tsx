@@ -13,39 +13,77 @@ import {
     Button,
     SimpleGrid,
     Badge,
-    Input, RingProgress, Text, SegmentedControl,
-    Paper, ThemeIcon, Progress, createStyles, Switch
+    Input,
+    RingProgress,
+    Text,
+    SegmentedControl,
+    createStyles,
+    ActionIcon, NumberInputHandlers, Transition
 } from "@mantine/core";
-import {CalendarTime, Clock, PlayerPause, PlayerPlay, Refresh} from "tabler-icons-react";
-
+import {Minus, PlayerPause, PlayerPlay, Plus, Refresh} from "tabler-icons-react";
+interface ISkipometer {
+    caption: string,
+    enableTimer: boolean,
+    initialTimeLeft: string,
+    startVotingTime: string,
+    skipNumber: number,
+    allowRevote: boolean,
+    currentSkipNumber: number,
+    saveValue: number,
+    previousState: states,
+    state: states,
+    voting: boolean,
+    votes: [{
+        nickname: string,
+        skip: boolean
+    }],
+    startTime: null,
+    timeLeft: number,
+    pauses: [],
+    timer: null,
+}
 enum states {
     STOP, RUNNING, PAUSE, TIMEOUT, SKIPPED
 }
-const ICON_SIZE = 60;
 const useStyles = createStyles((theme) => ({
-    card: {
-        position: 'relative',
-        overflow: 'visible',
-        padding: theme.spacing.xl,
-        paddingTop: theme.spacing.xl * 1.5 + ICON_SIZE / 3,
+    wrapper: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: `6px ${theme.spacing.xs}px`,
+        borderRadius: theme.radius.sm,
+        border: '1px solid transparent',
+        backgroundColor: theme.colors.dark[5],
+
+        '&:focus-within': {
+            borderColor: theme.colors[theme.primaryColor][6],
+        },
     },
 
-    icon: {
-        position: 'absolute',
-        top: -ICON_SIZE / 3,
-        left: `calc(50% - ${ICON_SIZE / 2}px)`,
+    control: {
+        backgroundColor: theme.colors.dark[7],
+        border: '1px solid transparent',
+
+        '&:disabled': {
+            borderColor: 'transparent',
+            opacity: 0.8,
+            backgroundColor: 'transparent',
+        },
     },
 
-    title: {
-        fontFamily: `Greycliff CF, ${theme.fontFamily}`,
-        lineHeight: 1,
+    input: {
+        textAlign: 'center',
+        paddingRight: `${theme.spacing.sm}px !important`,
+        paddingLeft: `${theme.spacing.sm}px !important`,
+        height: 28,
+        flex: 1,
     },
 }));
 const webSocket = new WebSocket('ws://localhost:5000');
 const  ControlPanel = () => {
-  const [skipometer, setSkipometer] = useState({
+  const [skipometer, setSkipometer] = useState<ISkipometer>({
       caption: '',
-      enableTimer: false,
+      enableTimer: true,
       initialTimeLeft: '',
       startVotingTime: '',
       skipNumber: 0,
@@ -66,12 +104,12 @@ const  ControlPanel = () => {
   });
     const ws = useRef(webSocket);
     const { classes } = useStyles();
-
+    const handlers = useRef<NumberInputHandlers>(null);
+    const [opened, setOpened] = useState(false);
     useEffect(() => {
             ws.current.onopen = () => {
                 console.log('connected');
             }
-
             ws.current.onmessage = (event) => {
                 const data = JSON.parse(event.data);
                 setSkipometer((prevState) =>
@@ -96,30 +134,24 @@ const  ControlPanel = () => {
 
                 }));
             }
+
             return () => ws.current.close();
     } , [ws]);
  const updateSkipometer = (calback: any) => {
     calback(skipometer);
     setSkipometer({ ...skipometer });
-  }
-  const updateEnableTimer = (value: boolean) => {
-     setSkipometer({ ...skipometer, enableTimer: value });
+    sendStateToWSS();
   }
 
   const changeTime = (deltaTime: number) => {
     const newTime = timeToNumber(skipometer.initialTimeLeft) + deltaTime;
 
     if (newTime >= 0) {
-        console.log(skipometer.startVotingTime)
-        console.log(skipometer)
       skipometer.initialTimeLeft = numberToTime(newTime);
-
       setSkipometer({ ...skipometer });
-
       sendStateToWSS();
     }
   }
-
   const sendStateToWSS = () => {
          ws.current.send(JSON.stringify(skipometer));
   }
@@ -134,61 +166,37 @@ const  ControlPanel = () => {
         >
           Скипометр
         </Button>
-              <RingProgress hidden={skipometer.state === states.STOP} label={
-                  <Text size={'xs'} align={'center'}>
-                      {numberToTime(skipometer.timeLeft)}
-                  </Text>} sections={[{value: 100* skipometer.timeLeft / 3600000 ,
-                  color: skipometer.state === states.RUNNING ? 'green' : skipometer.state === states.PAUSE ? 'yellow' : 'red'}]} />
-              {/*<Paper radius="md" withBorder className={classes.card} mt={ICON_SIZE / 3}>
-                  <ThemeIcon className={classes.icon} size={ICON_SIZE} radius={ICON_SIZE}>
-                      <Clock size={34} />
-                  </ThemeIcon>
-
-                  <Text align="center" weight={700} className={classes.title}>
-                      {skipometer.caption}
-                  </Text>
-
-
-                  <Group position="center" mt="xs">
-                      <Text size="sm" color="dimmed">
-                          {numberToTime(skipometer.timeLeft)} {(skipometer.votes.filter((el) => el.skip).length)}
-                          {(skipometer.votes.filter((el) => !el.skip).length)}
-                      </Text>
-                  </Group>
-                  <Progress value={100 * skipometer.timeLeft / 3600000}
-                            color={skipometer.state === states.RUNNING ? 'green' : skipometer.state === states.PAUSE ? 'yellow' : 'red'}  mt={5} />
-                  <Progress sections={[{value: (skipometer.votes.filter((el) => el.skip).length) ,
-                      color: 'red'}, {value: (skipometer.votes.filter((el) => !el.skip).length), color: 'green'}]} mt={5} />
-                  <Group position="center" mt="md">
-                      <Text size="sm">{skipometer.currentSkipNumber}/{skipometer.skipNumber}</Text>
-                  </Group>
-              </Paper>*/}
           </div>
         <Title className="control-panel__header">Панель управления</Title>
-        <form className="control-panel__form">
+            <Transition mounted={skipometer.state !== states.RUNNING} transition="fade" duration={500} timingFunction="ease">
+                {(styles) =>
+                    <div style={styles}>
+        <form hidden={skipometer.state === states.RUNNING} className="control-panel__form">
             <Stack>
             <TextInput
                 label={'Заголовок'}
               id="caption"
-              defaultValue={skipometer.caption}
-                onChange={(e) => {
-                    setSkipometer({...skipometer, caption: e.target.value})
+                disabled={skipometer.state === states.RUNNING}
+              value={skipometer.caption}
+                onChange={(event) => {
+                   setSkipometer({...skipometer, caption: event.target.value})
                 }}
             />
-            <Checkbox
+          {/*  <Checkbox
                 label={'Включить таймер'}
               id="enableTimer"
+                transitionDuration={300}
               checked={skipometer.enableTimer}
-              onChange={(event) =>{
-                  updateEnableTimer(event.target.checked)
-                  ws.current.send(JSON.stringify({...skipometer, enableTimer: event.target.checked}));
+              onChange={(value) =>{
+                  updateSkipometer((skipometer: ISkipometer) => {
+                      skipometer.enableTimer = value.currentTarget.checked;
+                  })
              }
               }
               disabled={
-                skipometer.state === states.RUNNING ||
-                skipometer.state === states.PAUSE
+                skipometer.state === states.RUNNING
               }
-            />
+            />*/}
                 <Input.Wrapper  label={'Начальное время'}>
             <Input
               id="initialTimeLeft"
@@ -196,14 +204,13 @@ const  ControlPanel = () => {
               step="2"
               value={skipometer.initialTimeLeft}
               onChange={(event: any) => {
-                  skipometer.initialTimeLeft = event.target.value;
-                  setSkipometer({...skipometer});
-                  sendStateToWSS();
+                  updateSkipometer((skipometer: ISkipometer) => {
+                      skipometer.initialTimeLeft = event.target.value;
+                  })
               }
               }
               disabled={
-                skipometer.state === states.RUNNING ||
-                !skipometer.enableTimer
+                skipometer.state === states.RUNNING
               }
             />
                 </Input.Wrapper>
@@ -246,17 +253,20 @@ const  ControlPanel = () => {
               >-1 час</Button>
             </SimpleGrid>
                 <Input.Wrapper label={'Тир саба'}>
-                <SegmentedControl fullWidth
-                                  disabled={ skipometer.state === states.RUNNING}
+                <SegmentedControl
+                    fullWidth
+                    disabled={ skipometer.state === states.RUNNING}
+                    value={skipometer.startVotingTime}
+                    transitionDuration={300}
                     data={[
                         { value: '00:30:00', label: 'Саб' },
                         { value: '00:15:00', label: 'Мега саб' },
                         { value: '00:00:00', label: 'ГИГА саб' },
                     ]}
                     onChange={(value) => {
-                        skipometer.startVotingTime = value;
-                        setSkipometer({...skipometer})
-                        sendStateToWSS();
+                        updateSkipometer((skipometer : ISkipometer) => {
+                            skipometer.startVotingTime = value;
+                        })
                     }}
                 />
                 </Input.Wrapper>
@@ -267,9 +277,7 @@ const  ControlPanel = () => {
               step="2"
               value={skipometer.startVotingTime}
               disabled={
-                skipometer.state === states.RUNNING ||
-                skipometer.state === states.PAUSE ||
-                !skipometer.enableTimer
+                skipometer.state === states.RUNNING
               }
               onChange={(event : any) => {
                   skipometer.startVotingTime = event.target.value;
@@ -278,24 +286,53 @@ const  ControlPanel = () => {
               }}
             />
             </Input.Wrapper>
-            <NumberInput
-                label={'Количество скипов'}
-              id="skipNumber"
-              min={1}
-                disabled={skipometer.state === states.RUNNING}
-              value={skipometer.skipNumber}
-              defaultValue={skipometer.skipNumber}
-                onChange={(value) => {
-                    setSkipometer({...skipometer, skipNumber: value!})
-                }}
-            />
+                <Input.Wrapper label={'Количество скипов'}>
+                    <div className={classes.wrapper} >
+                    <ActionIcon<'button'>
+                        size={28}
+                        variant="transparent"
+                        onClick={() => handlers.current?.decrement()}
+                        disabled={skipometer.skipNumber === 1 || skipometer.state === states.RUNNING}
+                        className={classes.control}
+                        onMouseDown={(event) => event.preventDefault()}
+                    >
+                        <Minus size={16} />
+                    </ActionIcon>
+
+                    <NumberInput
+                        variant="unstyled"
+                        min={1}
+                        handlersRef={handlers}
+                        value={skipometer.skipNumber}
+                        onChange={(value) => {
+                            value &&
+                            ws.current.send(JSON.stringify({...skipometer, skipNumber: value}));
+                        }}
+                        classNames={{ input: classes.input }}
+                    />
+
+                    <ActionIcon<'button'>
+                        size={28}
+                        variant="transparent"
+                        onClick={() => handlers.current?.increment()}
+                        className={classes.control}
+                        disabled={skipometer.state === states.RUNNING}
+                        onMouseDown={(event) => event.preventDefault()}
+                    >
+                        <Plus size={16} />
+                    </ActionIcon>
+                    </div>
+                </Input.Wrapper>
             <Checkbox
               id="allowRevote"
               label={'Возможность переголосовать'}
               checked={skipometer.allowRevote}
+              transitionDuration={300}
+              disabled={skipometer.state === states.RUNNING}
               onChange={(value) => {
-                  setSkipometer({...skipometer, allowRevote: value.currentTarget.checked})
-                  ws.current.send(JSON.stringify({...skipometer, allowRevote: value.currentTarget.checked}));
+                  updateSkipometer((skipometer : ISkipometer) => {
+                      skipometer.allowRevote = value.currentTarget.checked;
+                  })
               }}
             />
                 <Group position={'apart'}>
@@ -304,43 +341,80 @@ const  ControlPanel = () => {
                 color={'green'}
               hidden={skipometer.state === states.RUNNING}
               onClick={() => {
-                  setSkipometer({
-                        ...skipometer, state: states.RUNNING,
-                  });
-                updateSkipometer((skipometer: any) => {
+                updateSkipometer((skipometer: ISkipometer) => {
                   skipometer.state = states.RUNNING;
                 });
-                sendStateToWSS();
               }}
             >Старт</Button>
             <Button
                 color={'yellow'}
                 leftIcon={<PlayerPause size={20}/>}
               hidden={
-               skipometer.state !== states.RUNNING ||
-                !skipometer.enableTimer
+               skipometer.state !== states.RUNNING
               }
               onClick={() => {
-                updateSkipometer((skipometer: any) => {
+                updateSkipometer((skipometer: ISkipometer) => {
                   skipometer.state = states.PAUSE;
                 });
-                sendStateToWSS();
               }}
             >Пауза</Button>
             <Button
                 leftIcon={<Refresh size={20}/>}
                 color={'red'}
               onClick={() => {
-                updateSkipometer((skipometer: any) => {
+                updateSkipometer((skipometer: ISkipometer) => {
                   skipometer.state = states.STOP;
                 });
-                sendStateToWSS();
               }}
             >Сбросить</Button>
             </Group>
             </Stack>
-        </form>
-        <div className="logs">
+        </form></div>}
+            </Transition>
+          <Transition mounted={skipometer.state === states.RUNNING} transition="fade" duration={500} timingFunction="ease">
+              {(styles) => <div style={styles}>
+                  <RingProgress size={400} hidden={skipometer.state === states.STOP
+                      || skipometer.state === states.TIMEOUT
+                  || skipometer.state === states.PAUSE}
+                                label={
+                                    <Text size={50} align={'center'}>
+                                        {numberToTime(skipometer.timeLeft)}
+                                    </Text>}
+                                roundCaps
+                                sections={[{value: 100* skipometer.timeLeft / 3600000 ,
+                                    color: skipometer.state === states.RUNNING ? 'green' : skipometer.state === states.PAUSE ? 'yellow' : 'red'}]} />
+                  <Group mt={10} position={'apart'}>
+                      <Button
+                          color={'yellow'}
+                          leftIcon={<PlayerPause size={20}/>}
+                          hidden={
+                              skipometer.state !== states.RUNNING
+                          }
+                          onClick={() => {
+                              updateSkipometer((skipometer: ISkipometer) => {
+                                  skipometer.state = states.PAUSE;
+                              });
+                              setOpened(true);
+                          }}
+                      >Пауза</Button>
+                      <Button
+                          leftIcon={<Refresh size={20}/>}
+                          color={'red'}
+                          hidden={
+                              skipometer.state !== states.RUNNING
+                          }
+                          onClick={() => {
+                              updateSkipometer((skipometer: ISkipometer) => {
+                                  skipometer.state = states.STOP;
+                              });
+                              setOpened(true);
+                          }}
+                      >Сбросить</Button>
+                  </Group>
+              </div>}
+          </Transition>
+        <div className="logs" hidden={skipometer.state !== states.RUNNING}>
+            <Stack>
           {skipometer.votes.map((vote, index) => (
             <Badge
                 size={'xl'}
@@ -353,6 +427,7 @@ const  ControlPanel = () => {
               vote.skip ? 'skip +1' : 'save -' + skipometer.saveValue
             }`}</Badge>
           ))}
+            </Stack>
         </div>
       </div>
         </MantineProvider>

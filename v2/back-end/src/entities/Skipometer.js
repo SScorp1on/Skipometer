@@ -136,6 +136,7 @@ class Skipometer {
 
   processDataFromControlPanel(message) {
     const skipometer = JSON.parse(message);
+    console.log(skipometer);
     this.caption = skipometer.caption;
     this.initialTimeLeft = skipometer.initialTimeLeft;
     this.startVotingTime = skipometer.startVotingTime;
