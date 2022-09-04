@@ -67,6 +67,7 @@ const {classes} = useStyles();
                 </Transition>
 
         <Text
+            weight={500}
           className={
             'skipometer__time' +
             (skipometer.state === states.TIMEOUT ||
