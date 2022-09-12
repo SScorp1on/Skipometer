@@ -152,7 +152,6 @@ class Skipometer {
           (accumulator, currentPause) => accumulator + currentPause.end - currentPause.start,
           0
         );
-
         this.timeLeft =
           timeToNumber(this.initialTimeLeft) + this.startTime - Date.now() + pausedTime;
 

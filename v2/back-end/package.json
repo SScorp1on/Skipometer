@@ -10,6 +10,9 @@
   "author": "Denis Vilkov",
   "license": "ISC",
   "dependencies": {
+    "@twurple/api": "^5.2.3",
+    "@twurple/auth": "^5.2.3",
+    "@twurple/chat": "^5.2.3",
     "tmi.js": "^1.8.5",
     "ws": "^8.8.1"
   }

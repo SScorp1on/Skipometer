@@ -60,7 +60,7 @@ const {classes} = useStyles();
             radius={'md'}
             className={`skipometer__progress-bar__progress ` + classes.bar}
             value={skipometer.currentSkipNumber? skipometer.currentSkipNumber * 100 / skipometer.skipNumber: 0}
-            color={skipometer.state === states.SKIPPED ? 'red' : 'green'}
+            color={skipometer.state === states.SKIPPED ? 'red' : 'teal'}
           />
           {skipometer.currentSkipNumber}/{skipometer.skipNumber}
         </div>}
